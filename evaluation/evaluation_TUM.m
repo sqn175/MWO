@@ -28,7 +28,7 @@ load_param_MWO;
 datasetName = test_data_set_Name;
 
 % save dir
-FigResultBaseDir = [inputBaseDir, datasetName, '\fig'];
+FigResultBaseDir = [inputBaseDir, datasetName, '/fig'];
 if(exist(FigResultBaseDir,'dir') == 0)
     mkdir(FigResultBaseDir);
 end
@@ -42,7 +42,7 @@ disp(['datasetName:',FigResultBaseDir]);
 
 % read GT
 GT = importdata('groundtruth_ass_depth_new.txt');
-result = importdata([ResultBaseDir,test_data_set_Name,'\result.txt']);
+result = importdata([ResultBaseDir,test_data_set_Name,'/result.txt']);
 
 numFrame = min(size(GT,1),size(result,1)); % (GT always starts after than result)
 error = zeros(numFrame,1);

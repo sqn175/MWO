@@ -27,50 +27,75 @@ clc;
 clear;
 close all;
 % load parameter and dir
-addpath('..\');
-addpath('..\evaluation');
-load_param_MWO;
+addpath('../');
+addpath('../evaluation');
+load_param_MWO_eth3d;
 
 % Outer loop (data)
 inputDataDir = [inputBaseDir, test_data_set_Name];
 ResultBaseDir = [ResultBaseDir, test_data_set_Name];
-SpcDir = [ResultBaseDir,'\SPC\'];
-if( exist(inputDataDir,'dir') == 0 )
+SpcDir = [ResultBaseDir,'/SPC/'];
+if( exist(ResultBaseDir,'dir') == 0 )
     mkdir(ResultBaseDir);
 end
 
 % load input
 % read the image (timestamp) name list
-depthMapFiles = dir([inputDataDir,'\depth']);
+depthMapFiles = dir([inputDataDir,'/depth']);
 depthMapList = depthMapFiles(3:end); % ignore the first two entries which are . and ..
 numFrames = size(depthMapList,1);
 
 % output file
 if saveResult == 1
-    fileID = fopen([ResultBaseDir,'\result.txt'],'w');
+    fileID = fopen([ResultBaseDir,'/result.txt'],'w');
+    fprintf(fileID, '# timestamp tx ty tz qx qy qz qw\n');
 end
 
-% groundtruth of the first frame (for converting the result to w.r.t vicon)
-q_gt0 = [0.2239,-0.4871,0.7673,-0.3519];
-R_gt0 = quat2dcm_Eigen(q_gt0);
-t_gt0 = [-2.5508;0.9872;1.1019];
+if do_plot
+    traj_x = 0; traj_y = 0; traj_z = 0;
+    pc_x = 0; pc_y = 0; pc_z = 0; pc_c = 0;
+    
+    figure; title('Tracking result');
+    axis equal; hold on;
+    xlabel('x (m)'); ylabel('y (m)'); zlabel('z (m)');
+    
+    % plot historical trajectory
+    traj_p = plot3(traj_x, traj_y, traj_z, 'g.');
+    traj_p.XDataSource = 'traj_x';
+    traj_p.YDataSource = 'traj_y';
+    traj_p.ZDataSource = 'traj_z';
+    
+    % Plot current point cloud
+    pc_p = scatter3(pc_x, pc_y, pc_z, [], pc_c, 'SizeData', 0.5);
+    pc_p.XDataSource = 'pc_x';
+    pc_p.YDataSource = 'pc_y';
+    pc_p.ZDataSource = 'pc_z';
+    pc_p.CDataSource = 'pc_c';
+    
+    % plot camera
+    cam_p = plotCamera('Location', [0, 0, 0], ...
+                        'Orientation', eye(3), 'Size', 0.1);
+end
 
 % main loop
 for i = 1:numFrames   
-    % directly load the sn and spc
-    data = importdata([SpcDir,depthMapList(i).name,'.mat']);
-    sn = data.sn;
-    spc = data.PointCloud;
-    
+    % Preprocess, compute the normals
+    % load the depthMap
+    depthMap = imread([inputDataDir,'/depth/',depthMapList(i).name]);
+    depthMap = double(depthMap) / depth_scale;
+
+    % surface normal fitting
+    [sn,spc,PointCloud] = GetSurfaceNormalCell(depthMap,cellsize,camParams);
+
     % we only use points whose depth is between max(0.5,d_min)
     % and 2*median(d) - d_min
-    d_min = max(min(spc(3,:)),0.5);
-    d_med = median(spc(3,:));
-    spc = spc(:,spc(3,:) > d_min & spc(3,:) < 2*d_med - d_min);
+    cind = find(spc(3,:) > d_min & spc(3,:) < d_max);
+    spc = spc(:, cind);
+    sn = sn(:, cind);
     
     % Tracking
     % Motion notation: R is from Manhattan Frame (MF) to camera coordinate
-    %                  t is from MF to camera coordinate
+    %                  t is the translation (position) defined in MW frame
     if InitMfFound == 1 % see whether the MF has been found
         % Tracking MF
         [R,IsTracked] = TrackingMF(R,sn,ConvergeAngle,ConeAngle_tracking,c,minNumSample);
@@ -138,13 +163,37 @@ for i = 1:numFrames
         % record the estimated pose
         if saveResult == 1
             if convertVicon == 0
-                fprintf(fileID,'%s %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f\n',num2str(depthMapList(i).name(1:17)),t(1),t(2),t(3),q(2),q(3),q(4),q(1));
+                fprintf(fileID,'%s %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f\n',num2str(depthMapList(i).name(1:end-4)),t(1),t(2),t(3),q(2),q(3),q(4),q(1));
             else
-                fprintf(fileID,'%s %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f\n',num2str(depthMapList(i).name(1:17)),t_wrt_vicon(1),t_wrt_vicon(2),t_wrt_vicon(3),q_wrt_vicon(2),q_wrt_vicon(3),q_wrt_vicon(4),q_wrt_vicon(1));
+                fprintf(fileID,'%s %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f\n',num2str(depthMapList(i).name(1:end-4)),t_wrt_vicon(1),t_wrt_vicon(2),t_wrt_vicon(3),q_wrt_vicon(2),q_wrt_vicon(3),q_wrt_vicon(4),q_wrt_vicon(1));
             end
         end
     end
-    disp(['The ',num2str(i),' frame']);
+    disp(['Processed the ',num2str(i),' frame']);
+    
+    if do_plot
+        if mod(i, 20) ~= 0
+            delete(cam_p)
+        end
+        
+        cam_position = t;
+        traj_x = [traj_x, cam_position(1)]; 
+        traj_y = [traj_y, cam_position(2)];
+        traj_z = [traj_z, cam_position(3)];
+        
+        spc = R'*spc + t;
+        pc_x = spc(1,:); 
+        pc_y = spc(2,:); 
+        pc_z = spc(3,:);
+        pc_c = pc_z;
+        
+        refreshdata
+        drawnow
+        
+        % plot camera
+        cam_p = plotCamera('Location', t, ...
+                            'Orientation', R, 'Size', 0.1);
+    end
 end
 
 if saveResult == 1
@@ -152,4 +201,4 @@ if saveResult == 1
 end
 
 %% evaluate
-evaluation_TUM;
+% evaluation_TUM;

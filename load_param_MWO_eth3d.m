@@ -29,9 +29,9 @@ format long
 %     [fx  0 cx]
 % K = [ 0 fy cy]
 %     [ 0  0  1]
-K = [535.4,0,320.1;...	
-     0,539.2,247.6;...
-     0,0,1];
+K = [726.30139160156, 0, 356.69226074219;	
+     0, 726.30139160156, 186.45402526855;
+     0, 0, 1];
 % k1, k2, and k3 = radial distortion coefficients of the lens
 distortion_k = [0, 0, 0]; 
 % p1 and p2 = Tangential distortion coefficients of the lens
@@ -46,8 +46,8 @@ depth_scale = 5000;
         
 % Preprocessing parameters
 UseBilateralFilter = 0;
-d_min = 0.5;
-d_max = 3;
+d_min = 0.2;
+d_max = 6;
 
 % MMF seeking parameters
 numTrial = 100;
@@ -85,8 +85,8 @@ R = eye(3);
 t = [0 0 0]';
 
 % Dataset Name List
-test_data_set_Name = '/rgbd_dataset_freiburg3_cabinet';
-inputBaseDir = '/home/qin/Downloads/Datasets/TUM';%'path_to_dataset';%
+test_data_set_Name = '/sofa_1';
+inputBaseDir = '/home/qin/Downloads/Datasets/ETH3D/training';%'path_to_dataset';%
 ResultBaseDir = '/home/qin/Downloads/MWO_result';%'path_to_resultSavingDir';
 
 % other parameters
@@ -94,9 +94,9 @@ saveResult = 1;
 convertVicon = 1;
 
 % groundtruth of the first frame (for converting the result to w.r.t vicon)
-q_gt0 = [0.2239,-0.4871,0.7673,-0.3519];
+q_gt0 = [0.034742456815185 0.89968318219643 -0.43504210647755 -0.01007466917233];
 R_gt0 = quat2dcm_Eigen(q_gt0);
-t_gt0 = [-2.5508;0.9872;1.1019];
+t_gt0 = [0.51160247495498 0.90559451596743 1.5097977995436]';
 
 % Debug parameters
-do_plot = false;
+do_plot = true;

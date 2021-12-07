@@ -24,12 +24,13 @@
 % SUCH DAMAGE.                                                               *
 %*****************************************************************************/
 
-function [SurfaceNormal, SuperPC, PointCloudList] = GetSurfaceNormalCell(depthMap,cellsize,K)
+function [SurfaceNormal, SuperPC, PointCloudList] = GetSurfaceNormalCell(depthMap,cellsize,camParams)
 % This function aims to estimate the surface normal of each cell of the
 % depth map
 [height,width] = size(depthMap);
-depthMap = double(depthMap)/5000;% 5000 is the scale factor, see TUM dataset.
 
+% undistort
+depthMap = undistortImage(depthMap, camParams);
 
 % creat the cell
 cellNumX = floor(width/cellsize);
@@ -41,7 +42,7 @@ PointCloud = zeros(height,width,3);
 SuperPC = zeros(3,cellNumX*cellNumY);% the spc has the same data structure 
                                      % as the sn does, which is good for
                                      % corresponing each other.
-
+K = camParams.IntrinsicMatrix';
 fx = K(1,1);
 fy = K(2,2);
 invfx = 1.0/fx;
@@ -99,14 +100,6 @@ cind = find(~isnan(SurfaceNormal(1,:)));
 SurfaceNormal = SurfaceNormal(:,cind);
 % just keep the corresponding spc
 SuperPC = SuperPC(:,cind);
-
-% only return surface normal whose depth is within a range of
-% median of depth
-depth_median = median(SuperPC(3,:));
-depth_min = max(0.5,min(SuperPC(3,:)));
-cind2 = find(SuperPC(3,:) > depth_min & SuperPC(3,:) < 2*depth_median - depth_min);
-SurfaceNormal = SurfaceNormal(:,cind2);
-SuperPC = SuperPC(:,cind2);
 
 % 
 XList = reshape(PointCloud(:,:,1),[1,width*height]);
