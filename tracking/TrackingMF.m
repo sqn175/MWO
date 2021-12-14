@@ -46,9 +46,9 @@ while acos((trace(R'*R_update)-1)/2) > ConvergeAngle || iter == 1
             F = [];
             % Let's make it fast!
             nVps = Ra*normVectors;
-            % Re-orient a given point normal according to view direction.
-%             nVps = flipNormalTowardsViewdirection(nVps,[0,0,1]);
 
+            % This groups all norm vectors that point toward or out-towards
+            % the x axis, see eq.1
             eta = sqrt(nVps(1,:).*nVps(1,:) + nVps(2,:).*nVps(2,:));
             index = find(eta < sin(ConeAngle));
             nVps_inlier = nVps(:,index);

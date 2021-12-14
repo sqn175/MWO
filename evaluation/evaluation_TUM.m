@@ -31,8 +31,8 @@ result_gt_gap = 3;
 gt_result_gap = 0;
 
 % read GT
-GT_data = importdata([inputBaseDir, test_data_set_Name, '/groundtruth.txt']);
-GT = GT_data.data;
+GT = importdata(['new_gt.txt']);
+
 result_data = importdata([ResultBaseDir,test_data_set_Name,'/result.txt']);
 result = result_data.data;
 
