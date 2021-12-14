@@ -24,38 +24,22 @@
 % SUCH DAMAGE.                                                               *
 %*****************************************************************************/
 
-function [SurfaceNormal, SuperPC, PointCloudList] = GetSurfaceNormalCell(depthMap,cellsize,camParams)
+function [SurfaceNormal, SuperPC] = GetSurfaceNormalCell(PointCloud,cellsize,camParams)
 % This function aims to estimate the surface normal of each cell of the
-% depth map
-[height,width] = size(depthMap);
-
-% undistort
-depthMap = undistortImage(depthMap, camParams);
 
 % creat the cell
+height = camParams.ImageSize(1);
+width = camParams.ImageSize(2);
+
 cellNumX = floor(width/cellsize);
 cellNumY = floor(height/cellsize);
+
 SurfaceNormal = zeros(3,cellNumX*cellNumY);
 
-% recover the point cloud
-PointCloud = zeros(height,width,3);
 SuperPC = zeros(3,cellNumX*cellNumY);% the spc has the same data structure 
                                      % as the sn does, which is good for
                                      % corresponing each other.
-K = camParams.IntrinsicMatrix';
-fx = K(1,1);
-fy = K(2,2);
-invfx = 1.0/fx;
-invfy = 1.0/fy;
-cx = K(1,3);%*ImageDownsamplingRate;
-cy = K(2,3);%*ImageDownsamplingRate;
-
-% recover 3d coordinate
-[U,V]=meshgrid((1:width)-cx,(1:height)-cy);
-PointCloud(:,:,3) = depthMap;
-PointCloud(:,:,1) = PointCloud(:,:,3).*U*invfx;
-PointCloud(:,:,2) = PointCloud(:,:,3).*V*invfy;
-
+                                     
 % fit the plane for each cell
 numCell = 1;
 for y = 1:cellNumY
@@ -100,17 +84,6 @@ cind = find(~isnan(SurfaceNormal(1,:)));
 SurfaceNormal = SurfaceNormal(:,cind);
 % just keep the corresponding spc
 SuperPC = SuperPC(:,cind);
-
-% 
-XList = reshape(PointCloud(:,:,1),[1,width*height]);
-YList = reshape(PointCloud(:,:,2),[1,width*height]);
-ZList = reshape(PointCloud(:,:,3),[1,width*height]);
-
-cind = find(ZList ~= 0);
-PointCloudList = zeros(3,numel(cind));
-PointCloudList(1,:) = XList(cind);
-PointCloudList(2,:) = YList(cind);
-PointCloudList(3,:) = ZList(cind);
 end
 
 % plane fitting

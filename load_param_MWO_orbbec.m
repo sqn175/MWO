@@ -36,20 +36,16 @@ K = [535.4,0,320.1;...
 distortion_k = [0, 0, 0]; 
 % p1 and p2 = Tangential distortion coefficients of the lens
 distortion_p = [0, 0];
-% image height
-height = 480;
-width = 640;
  
 camParams = cameraParameters('IntrinsicMatrix', K',...
             'RadialDistortion', distortion_k, ...
-            'TangentialDistortion', distortion_p, ...
-            'ImageSize', [height, width]);
+            'TangentialDistortion', distortion_p);
 
 % depth scale factor
 depth_scale = 5000;
         
 % Preprocessing parameters
-UseBilateralFilter = 1;
+UseBilateralFilter = 0;
 d_min = 0.5;
 d_max = 3;
 
@@ -97,10 +93,5 @@ ResultBaseDir = '/home/qin/Downloads/MWO_result';%'path_to_resultSavingDir';
 saveResult = 1;
 convertVicon = 1;
 
-% groundtruth of the first frame (for converting the result to w.r.t vicon)
-q_gt0 = [0.2239,-0.4871,0.7673,-0.3519]; % [qw qx qy qz]
-R_gt0 = quat2dcm_Eigen(q_gt0);
-t_gt0 = [-2.5508;0.9872;1.1019];
-
 % Debug parameters
-do_plot = false;
+do_plot = true;

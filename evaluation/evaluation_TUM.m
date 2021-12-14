@@ -27,24 +27,16 @@ load_param_MWO;
 
 datasetName = test_data_set_Name;
 
-% save dir
-FigResultBaseDir = [inputBaseDir, datasetName, '/fig'];
-if(exist(FigResultBaseDir,'dir') == 0)
-    mkdir(FigResultBaseDir);
-end
-
 result_gt_gap = 3;
 gt_result_gap = 0;
 
-write2file = 1;
-disp('The figures are saved in the dir:');
-disp(['datasetName:',FigResultBaseDir]);
-
 % read GT
-GT = importdata('groundtruth_ass_depth_new.txt');
-result = importdata([ResultBaseDir,test_data_set_Name,'/result.txt']);
+GT_data = importdata([inputBaseDir, test_data_set_Name, '/groundtruth.txt']);
+GT = GT_data.data;
+result_data = importdata([ResultBaseDir,test_data_set_Name,'/result.txt']);
+result = result_data.data;
 
-numFrame = min(size(GT,1),size(result,1)); % (GT always starts after than result)
+numFrame = min(size(GT,1),size(result,1)) - max(result_gt_gap, gt_result_gap); % (GT always starts after than result)
 error = zeros(numFrame,1);
 
 % rotation
@@ -88,7 +80,7 @@ for i = 1:numFrame
     
     if yaw_gt(i) < -0.0001
         yaw_gt(i) = yaw_gt(i) + 2*pi;
-    end;
+    end
     if yaw_result(i) < -0.0001
         yaw_result(i) = yaw_result(i) + 2*pi;
     end

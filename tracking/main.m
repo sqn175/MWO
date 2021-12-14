@@ -29,14 +29,15 @@ close all;
 % load parameter and dir
 addpath('../');
 addpath('../evaluation');
-load_param_MWO_eth3d;
+load_param_MWO;
 
 % Outer loop (data)
 inputDataDir = [inputBaseDir, test_data_set_Name];
-ResultBaseDir = [ResultBaseDir, test_data_set_Name];
-SpcDir = [ResultBaseDir,'/SPC/'];
-if( exist(ResultBaseDir,'dir') == 0 )
-    mkdir(ResultBaseDir);
+ResultDir = [ResultBaseDir, test_data_set_Name];
+
+SpcDir = [ResultDir,'/SPC/'];
+if( exist(ResultDir,'dir') == 0 )
+    mkdir(ResultDir);
 end
 
 % load input
@@ -47,15 +48,16 @@ numFrames = size(depthMapList,1);
 
 % output file
 if saveResult == 1
-    fileID = fopen([ResultBaseDir,'/result.txt'],'w');
+    fileID = fopen([ResultDir,'/result.txt'],'w');
     fprintf(fileID, '# timestamp tx ty tz qx qy qz qw\n');
 end
 
 if do_plot
     traj_x = 0; traj_y = 0; traj_z = 0;
     pc_x = 0; pc_y = 0; pc_z = 0; pc_c = 0;
+    nv_x = 0; nv_y = 0; nv_z = 0;
     
-    figure; title('Tracking result');
+    figure(1); title('Tracking result');
     axis equal; hold on;
     xlabel('x (m)'); ylabel('y (m)'); zlabel('z (m)');
     
@@ -66,15 +68,22 @@ if do_plot
     traj_p.ZDataSource = 'traj_z';
     
     % Plot current point cloud
-    pc_p = scatter3(pc_x, pc_y, pc_z, [], pc_c, 'SizeData', 0.5);
+    pc_p = scatter3(pc_x, pc_y, pc_z, [], pc_c, 'SizeData', 1.0);
     pc_p.XDataSource = 'pc_x';
     pc_p.YDataSource = 'pc_y';
     pc_p.ZDataSource = 'pc_z';
     pc_p.CDataSource = 'pc_c';
     
+    % Plot current norm vectors
+    nv_p = scatter3(nv_x, nv_y, nv_z, '.');
+    nv_p.XDataSource = 'nv_x';
+    nv_p.YDataSource = 'nv_y';
+    nv_p.ZDataSource = 'nv_z';
+    
     % plot camera
     cam_p = plotCamera('Location', [0, 0, 0], ...
                         'Orientation', eye(3), 'Size', 0.1);
+                    
 end
 
 % main loop
@@ -84,8 +93,12 @@ for i = 1:numFrames
     depthMap = imread([inputDataDir,'/depth/',depthMapList(i).name]);
     depthMap = double(depthMap) / depth_scale;
 
+    % Preprocess
+    pc = PreprocessDepthMap(depthMap, camParams, UseBilateralFilter);
+    
     % surface normal fitting
-    [sn,spc,PointCloud] = GetSurfaceNormalCell(depthMap,cellsize,camParams);
+    [sn,spc] = GetSurfaceNormalCell(pc,cellsize, camParams);
+    %quiver3(xyz(:,1), xyz(:,2), xyz(:,3),norm(:,1), norm(:,2),norm(:,3));
 
     % we only use points whose depth is between max(0.5,d_min)
     % and 2*median(d) - d_min
@@ -111,10 +124,10 @@ for i = 1:numFrames
         spc_MW2 = R'*spc;
         
         % translation estimation
-        D_MW_old = D_MW1;
-        [t_r, D_MW1] = EstimateTranslation(D_MW1,spc_MW2,config,options);
-        D_MW_new = D_MW1;
-        t = t - t_r;
+%         D_MW_old = D_MW1;
+%         [t_r, D_MW1] = EstimateTranslation(D_MW1,spc_MW2,config,options);
+%         D_MW_new = D_MW1;
+%         t = t - t_r;
     else
         % Initialization (Seek the dominant MF)
         [MF_can,MF,FindMF] = SeekMMF(sn,numTrial,ConvergeAngle,ConeAngle,c,minNumSample);
@@ -169,30 +182,39 @@ for i = 1:numFrames
             end
         end
     end
-    disp(['Processed the ',num2str(i),' frame']);
+    disp(['Processed frame ', num2str(i), ': ', depthMapList(i).name]);
     
     if do_plot
         if mod(i, 20) ~= 0
             delete(cam_p)
         end
         
+        % Plot trajectory
         cam_position = t;
         traj_x = [traj_x, cam_position(1)]; 
         traj_y = [traj_y, cam_position(2)];
         traj_z = [traj_z, cam_position(3)];
         
+        % Plot point cloud
         spc = R'*spc + t;
         pc_x = spc(1,:); 
         pc_y = spc(2,:); 
         pc_z = spc(3,:);
         pc_c = pc_z;
-        
+
+        nv = R'*sn + t;
+        nv = nv *3;
+        nv_x = nv(1,:); 
+        nv_y = nv(2,:); 
+        nv_z = nv(3,:);
+                
         refreshdata
         drawnow
         
         % plot camera
         cam_p = plotCamera('Location', t, ...
                             'Orientation', R, 'Size', 0.1);
+                        
     end
 end
 
@@ -201,4 +223,4 @@ if saveResult == 1
 end
 
 %% evaluate
-% evaluation_TUM;
+evaluation_TUM;

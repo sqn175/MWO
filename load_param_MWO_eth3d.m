@@ -36,10 +36,14 @@ K = [726.30139160156, 0, 356.69226074219;
 distortion_k = [0, 0, 0]; 
 % p1 and p2 = Tangential distortion coefficients of the lens
 distortion_p = [0, 0];
- 
+% image height
+height = 465;
+width = 743;
+
 camParams = cameraParameters('IntrinsicMatrix', K',...
             'RadialDistortion', distortion_k, ...
-            'TangentialDistortion', distortion_p);
+            'TangentialDistortion', distortion_p,...
+            'ImageSize', [height, width]);
 
 % depth scale factor
 depth_scale = 5000;
@@ -47,7 +51,7 @@ depth_scale = 5000;
 % Preprocessing parameters
 UseBilateralFilter = 0;
 d_min = 0.2;
-d_max = 6;
+d_max = 5;
 
 % MMF seeking parameters
 numTrial = 100;
@@ -85,18 +89,18 @@ R = eye(3);
 t = [0 0 0]';
 
 % Dataset Name List
-test_data_set_Name = '/sofa_1';
+test_data_set_Name = '/sfm_lab_room_2';
 inputBaseDir = '/home/qin/Downloads/Datasets/ETH3D/training';%'path_to_dataset';%
 ResultBaseDir = '/home/qin/Downloads/MWO_result';%'path_to_resultSavingDir';
 
 % other parameters
 saveResult = 1;
-convertVicon = 1;
+convertVicon = 0;
 
 % groundtruth of the first frame (for converting the result to w.r.t vicon)
-q_gt0 = [0.034742456815185 0.89968318219643 -0.43504210647755 -0.01007466917233];
+q_gt0 = [0.89968318219643 -0.43504210647755 -0.01007466917233 0.034742456815185 ];
 R_gt0 = quat2dcm_Eigen(q_gt0);
 t_gt0 = [0.51160247495498 0.90559451596743 1.5097977995436]';
 
 % Debug parameters
-do_plot = true;
+do_plot = false;
