@@ -79,7 +79,11 @@ for j = 1:numTrial
         if numFound == 2
             v1 = M(:,directionFound(1));
             v2 = M(:,directionFound(2));
-            v3 = cross(v1,v2);
+            if directionFound(1) == 1 && directionFound(2) == 3
+                v3 = cross(v2,v1);
+            else
+                v3 = cross(v1,v2);
+            end
             M(:,6-(directionFound(1)+directionFound(2))) = v3;
         end
         

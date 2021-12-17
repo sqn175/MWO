@@ -44,27 +44,26 @@ pitch_result = zeros(numFrame,1);
 yaw_result = zeros(numFrame,1);
 time_result = zeros(numFrame,1);
 
-base_time = min(GT(1,1), result(1,1));
+base_time = min(GT(1,1), result(start_index,1));
 for i = 1:size(GT,1)
     q_gt = [GT(i,8),GT(i,5:7)];
     time_gt(i) = GT(i,1) - base_time;
 
-    R_gt = quat2dcm_Eigen(q_gt);
+    eul = q2e(q_gt);
 
-    [yaw_gt(i),pitch_gt(i),roll_gt(i)] = dcm2angle(R_gt);
-
-    yaw_gt(i) = normAngle(yaw_gt(i));
+    roll_gt(i) = normAngle(eul(1));
+    pitch_gt(i) = normAngle(eul(2));
+    yaw_gt(i) = normAngle(eul(3));
+ 
 end
 for i = 1:size(result,1)
     q_result = [result(i,8),result(i,5:7)];
     time_result(i) = result(i,1) - base_time;
     
-    R_result = quat2dcm_Eigen(q_result);
-    
-    [yaw_result(i),pitch_result(i),roll_result(i)] = dcm2angle(R_result);
-
-    yaw_result(i) = normAngle(yaw_result(i));
-
+    eul = q2e(q_result);
+    roll_result(i) = normAngle(eul(1));
+    pitch_result(i) = normAngle(eul(2));
+    yaw_result(i) = normAngle(eul(3));
 end
 
 %% absolute error analysis
@@ -89,7 +88,7 @@ end
 figure;
 plot(time_gt,roll_gt*57.3,'-g','LineWidth',3);
 hold on;
-plot(time_result,roll_result*57.3,'-r','LineWidth',3);
+plot(time_result,roll_result*57.3,'.r','LineWidth',3);
 grid on;
 title('Roll');
 legend('GT','result');
@@ -101,7 +100,7 @@ set(gca,'FontSize',12,'FontWeight','bold');
 figure;
 plot(time_gt,pitch_gt*57.3,'-g','LineWidth',3);
 hold on;
-plot(time_result,pitch_result*57.3,'-r','LineWidth',3);
+plot(time_result,pitch_result*57.3,'.r','LineWidth',3);
 grid on;
 title('Pitch');
 legend('GT','result');
@@ -110,10 +109,9 @@ ylabel('deg','FontSize',12,'FontWeight','bold');
 set(gca,'FontSize',12,'FontWeight','bold');
 
 % yaw
-figure;
+figure;hold on;
 plot(time_gt,yaw_gt*57.3,'-g','LineWidth',3);
-hold on;
-plot(time_result,yaw_result*57.3,'-r','LineWidth',3);
+plot(time_result,yaw_result*57.3,'.r','LineWidth',3);
 grid on;
 title('Yaw');
 legend('GT','result');

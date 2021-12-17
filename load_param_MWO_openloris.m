@@ -26,7 +26,9 @@
 format long
 
 % Debug parameters
-do_plot = 1;
+do_plot = 0;
+
+start_index = 18;
 
 % intrinsic parameters (RGBD camera parameters)
 % TUM fr3 
@@ -55,7 +57,7 @@ depth_scale = 1000;
 % Preprocessing parameters
 UseBilateralFilter = 1;
 d_min = 0.2;
-d_max = 10;
+d_max = 20;
 
 % MMF seeking parameters
 numTrial = 100;
@@ -63,7 +65,7 @@ ConvergeAngle = 1/180*pi;
 ConeAngle = 45/180*pi;
 ConeAngle_tracking = 10/180*pi;
 c = 20;
-minNumSample = 80;% optimal;
+minNumSample = 100;% optimal;
 ratio = 0.1;
 
 % Distribution correlation parameters (EstimateTraslation)

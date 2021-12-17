@@ -103,4 +103,4 @@ R_gt0 = quat2dcm_Eigen(q_gt0);
 t_gt0 = [-2.5508;0.9872;1.1019];
 
 % Debug parameters
-do_plot = false;
+do_plot = 1;

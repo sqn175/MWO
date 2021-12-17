@@ -29,7 +29,7 @@ close all;
 % load parameter and dir
 addpath('../');
 addpath('../evaluation');
-load_param_MWO;
+load_param_MWO_openloris;
 
 % Outer loop (data)
 inputDataDir = [inputBaseDir, test_data_set_Name];
@@ -56,6 +56,9 @@ if do_plot
     traj_x = 0; traj_y = 0; traj_z = 0;
     pc_x = 0; pc_y = 0; pc_z = 0; pc_c = 0;
     nv_x = 0; nv_y = 0; nv_z = 0;
+    ori_x_u = 1; ori_x_v = 0; ori_x_w = 0;
+    ori_y_u = 0; ori_y_v = 1; ori_y_w = 0;
+    ori_z_u = 0; ori_z_v = 0; ori_z_w = 1;
     
     figure(1); title('Tracking result');
     axis equal; hold on;
@@ -68,26 +71,45 @@ if do_plot
     traj_p.ZDataSource = 'traj_z';
     
     % Plot current point cloud
-    pc_p = scatter3(pc_x, pc_y, pc_z, [], pc_c, 'SizeData', 1.0);
+    pc_p = scatter3(pc_x, pc_y, pc_z, [], pc_c,'filled', 'SizeData', 10.0);
     pc_p.XDataSource = 'pc_x';
     pc_p.YDataSource = 'pc_y';
     pc_p.ZDataSource = 'pc_z';
     pc_p.CDataSource = 'pc_c';
     
     % Plot current norm vectors
-    nv_p = scatter3(nv_x, nv_y, nv_z, '.');
+    nv_p = scatter3(nv_x, nv_y, nv_z, 'k.');
     nv_p.XDataSource = 'nv_x';
     nv_p.YDataSource = 'nv_y';
     nv_p.ZDataSource = 'nv_z';
     
-    % plot camera
-    cam_p = plotCamera('Location', [0, 0, 0], ...
-                        'Orientation', eye(3), 'Size', 0.1);
+    % plot reference frame
+    quiver3(0,0,0,1,0,0,1.5,'r');
+    quiver3(0,0,0,0,1,0,1.5,'g');
+    quiver3(0,0,0,0,0,1,1.5,'b');
+    
+    % plot orientation
+    ori_x_p = quiver3(0,0,0,ori_x_u,ori_x_v,ori_x_w,3,'r');
+    ori_x_p.UDataSource = 'ori_x_u';
+    ori_x_p.VDataSource = 'ori_x_v';
+    ori_x_p.WDataSource = 'ori_x_w';
+    
+    ori_y_p = quiver3(0,0,0,ori_y_u,ori_y_v,ori_y_w,3,'g');
+    ori_y_p.UDataSource = 'ori_y_u';
+    ori_y_p.VDataSource = 'ori_y_v';
+    ori_y_p.WDataSource = 'ori_y_w';
+    
+    ori_z_p = quiver3(0,0,0,ori_z_u,ori_z_v,ori_z_w,3,'b');
+    ori_z_p.UDataSource = 'ori_z_u';
+    ori_z_p.VDataSource = 'ori_z_v';
+    ori_z_p.WDataSource = 'ori_z_w';
                     
 end
 
+angle_res = [];
+
 % main loop
-for i = 1:numFrames   
+for i = start_index:numFrames   
     % Preprocess, compute the normals
     % load the depthMap
     depthMap = imread([inputDataDir,'/depth/',depthMapList(i).name]);
@@ -95,7 +117,7 @@ for i = 1:numFrames
 
     % Preprocess
     pc = PreprocessDepthMap(depthMap, camParams, UseBilateralFilter);
-    
+
     % surface normal fitting
     [sn,spc] = GetSurfaceNormalCell(pc,cellsize, camParams);
     %quiver3(xyz(:,1), xyz(:,2), xyz(:,3),norm(:,1), norm(:,2),norm(:,3));
@@ -103,8 +125,11 @@ for i = 1:numFrames
     % we only use points whose depth is between max(0.5,d_min)
     % and 2*median(d) - d_min
     cind = find(spc(3,:) > d_min & spc(3,:) < d_max);
-    spc = spc(:, cind);
-    sn = sn(:, cind);
+    
+    % Convert to robot body frame: x forward, z upside
+    % The depth camera frame is z forward, y downside
+    spc = [0,0,1;-1,0,0;0,-1,0]*spc(:, cind);
+    sn = [0,0,1;-1,0,0;0,-1,0]*sn(:, cind);
     
     % Tracking
     % Motion notation: R is from Manhattan Frame (MF) to camera coordinate
@@ -114,11 +139,22 @@ for i = 1:numFrames
         [R,IsTracked] = TrackingMF(R,sn,ConvergeAngle,ConeAngle_tracking,c,minNumSample);
 
         % if lost tracking
-        if IsTracked == 0
+        if IsTracked == 0 
             disp(num2str(i));
             disp('lost tracking!');
             break;
         end
+        
+        if abs(det(R)+1) < 0.1
+            disp(num2str(i));
+            disp('Rot Mat det = -1');
+            break;
+        end
+        
+        % test
+        angle = R2e(R');
+        angle_res = [angle_res, angle*57.3];
+        % test end
         
         % compensate the rotation by convert the point cloud to MF frame.
         spc_MW2 = R'*spc;
@@ -176,18 +212,18 @@ for i = 1:numFrames
         % record the estimated pose
         if saveResult == 1
             if convertVicon == 0
-                fprintf(fileID,'%s %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f\n',num2str(depthMapList(i).name(1:end-4)),t(1),t(2),t(3),q(2),q(3),q(4),q(1));
+                fprintf(fileID,'%s %5.16f %5.16f %5.16f %5.16f %5.16f %5.16f %5.16f\n',num2str(depthMapList(i).name(1:end-4)),t(1),t(2),t(3),q(2),q(3),q(4),q(1));
             else
-                fprintf(fileID,'%s %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f %5.4f\n',num2str(depthMapList(i).name(1:end-4)),t_wrt_vicon(1),t_wrt_vicon(2),t_wrt_vicon(3),q_wrt_vicon(2),q_wrt_vicon(3),q_wrt_vicon(4),q_wrt_vicon(1));
+                fprintf(fileID,'%s %5.16f %5.16f %5.16f %5.16f %5.16f %5.16f %5.16f\n',num2str(depthMapList(i).name(1:end-4)),t_wrt_vicon(1),t_wrt_vicon(2),t_wrt_vicon(3),q_wrt_vicon(2),q_wrt_vicon(3),q_wrt_vicon(4),q_wrt_vicon(1));
             end
         end
     end
     disp(['Processed frame ', num2str(i), ': ', depthMapList(i).name]);
     
     if do_plot
-        if mod(i, 20) ~= 0
-            delete(cam_p)
-        end
+%         if mod(i, 20) ~= 0
+%             delete(cam_p)
+%         end
         
         % Plot trajectory
         cam_position = t;
@@ -200,21 +236,22 @@ for i = 1:numFrames
         pc_x = spc(1,:); 
         pc_y = spc(2,:); 
         pc_z = spc(3,:);
-        pc_c = pc_z;
+        pc_c = pc_x;
 
+%         sn = flipNormalTowardsViewdirection(sn, [0,0,1]);
         nv = R'*sn + t;
         nv = nv *3;
         nv_x = nv(1,:); 
         nv_y = nv(2,:); 
         nv_z = nv(3,:);
-                
-        refreshdata
-        drawnow
+              
+        % Plot camera orientation, i.e., R'
+        ori_x_u = R(1,1); ori_x_v = R(1,2); ori_x_w = R(1,3);
+        ori_y_u = R(2,1); ori_y_v = R(2,2); ori_y_w = R(2,3);
+        ori_z_u = R(3,1); ori_z_v = R(3,2); ori_z_w = R(3,3);
         
-        % plot camera
-        cam_p = plotCamera('Location', t, ...
-                            'Orientation', R, 'Size', 0.1);
-                        
+        refreshdata
+        drawnow     
     end
 end
 
@@ -223,4 +260,12 @@ if saveResult == 1
 end
 
 %% evaluate
+figure;
+subplot(3,1,1);
+plot(angle_res(1,:),'.');
+subplot(3,1,2);
+plot(angle_res(2,:),'.');
+subplot(3,1,3);
+z = angle_res(3,:);
+plot(z,'.');
 evaluation;

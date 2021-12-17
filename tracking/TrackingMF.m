@@ -29,7 +29,7 @@ function [R_update,updated,denMedian] = TrackingMF(R,normVectors,ConvergeAngle,C
 % Output:
 %       R_update: the current orientation of the sensor
 
-R_update = R';%infact, R_updata can be randomly assigned
+R_update = eye(3);%infact, R_updata can be randomly assigned
 updated = 0;
 numFound = 0;
 directionFound = [];
@@ -38,13 +38,16 @@ iter = 1;
 % density temp
 denTemp = zeros(3,1) + 0.00001;
 while acos((trace(R'*R_update)-1)/2) > ConvergeAngle || iter == 1
+        % 3. iter not 1, then R_update ===== world to camera, R ===== world to camera
         if iter ~= 1
             R = R_update;
         end
         for a = 1:3
+            % 2. R ===== world to camera
             Ra = [R(:,mod(a+3,3)+1),R(:,mod(a+4,3)+1),R(:,mod(a+5,3)+1)]';
             F = [];
             % Let's make it fast!
+            % 1. Ra ===== from camera to world
             nVps = Ra*normVectors;
 
             % This groups all norm vectors that point toward or out-towards
@@ -63,6 +66,8 @@ while acos((trace(R'*R_update)-1)/2) > ConvergeAngle || iter == 1
             F = f(:,select3);
             
             if numel(F) < minNumSample
+                disp(['numsample: ', num2str(numel(F)), ', direction: ', ...
+                    num2str(a), ' is less than ',num2str(minNumSample)]);
                 % Here we do not straightforwardly break, if two of the
                 % three direction can find the mean shift, the VO can
                 % still be initialized
@@ -117,7 +122,11 @@ while acos((trace(R'*R_update)-1)/2) > ConvergeAngle || iter == 1
         if numFound == 2
             v1 = R_update(:,directionFound(1));
             v2 = R_update(:,directionFound(2));
-            v3 = cross(v1,v2);
+            if directionFound(1) == 1 && directionFound(2) == 3
+                v3 = cross(v2,v1);
+            else
+                v3 = cross(v1,v2);
+            end
             R_update(:,6-(directionFound(1)+directionFound(2))) = v3;
         end
         

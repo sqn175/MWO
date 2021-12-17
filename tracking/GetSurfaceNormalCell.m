@@ -53,7 +53,7 @@ for y = 1:cellNumY
         
         % find the good 3-D points for fitting
         Z_median = median(Z);
-        index = find(abs((Z - Z_median)/Z_median) < 0.05 );
+        index = find(abs((Z - Z_median)/Z_median) < 0.03 );
         Z = Z(index);
         X = X(index);
         Y = Y(index);

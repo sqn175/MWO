@@ -24,5 +24,11 @@ cy = K(2,3);%*ImageDownsamplingRate;
 pointCloud(:,:,3) = depthMap;
 pointCloud(:,:,1) = pointCloud(:,:,3).*U*invfx;
 pointCloud(:,:,2) = pointCloud(:,:,3).*V*invfy;
+    
+% Convert to robot frame: x forward, z upside
+% The depth camera frame is z forward, y downside
+% pointCloud(:,:,1) = depthMap;
+% pointCloud(:,:,2) = pointCloud(:,:,1).*U*invfx;
+% pointCloud(:,:,3) = pointCloud(:,:,1).*V*invfy;
 
 end
